@@ -63,7 +63,7 @@ def feature_selection_cross_val(X_train, X_test, y_train, y_test, features, C, c
 
 
 def main():
-    data = pd.read_csv('/home/mp/Documents/Cheminformatics/Assignments/Project/ChIn_QSAR/dat/trainings_data.csv')
+    data = pd.read_csv('../dat/trainings_data.csv')
 
     if 'index' in data.columns:
         data = data.drop(['index'],axis=1)
