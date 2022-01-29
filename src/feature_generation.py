@@ -5,32 +5,51 @@ from rdkit.Chem import Descriptors
 from rdkit.ML.Descriptors import MoleculeDescriptors
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
-from matplotlib import pyplot as plt
 from collections import Counter
 import pandas as pd
 import numpy as np
 
 
+def check_for_anorganics(mol):
+    '''
+    Check weather a mol is anorganic. Returns True if the mol is anorganic (has no C).
+    '''
+    for atom in mol.GetAtoms():
+        if atom.GetSymbol() == 'C':
+            return False
+    return False
+
+
+def get_anorganics(suppl):
+    '''
+    returns list of all anorganic molecules in the data
+    '''
+    anorganics = []
+    for mol in suppl:
+        if check_for_anorganics(mol):
+            for atom in mol.GetAtoms():
+                print(atom.GetSymbol())
+    return anorganics
+
 
 def get_feature_matrix(suppl):
-    # Descriptors._descList is a list of all available descriptors
-    print(len(Descriptors._descList))
+    '''
+    Generates molecular 2D discriptors for a molecule
+    :param suppl: iter. mol object
+    :return: feature matrix and labels
+    '''
     # generate descriptor caculator from Descriptors._descList
     calc = MoleculeDescriptors.MolecularDescriptorCalculator([x[0] for x in Descriptors._descList])
-    # print descriptions of descriptors
-    print(calc.GetDescriptorSummaries())
-
+    print('initial number of desciptors: ', len(Descriptors._descList))
     # feature matrix
     X = []
     # labels
     y = []
-    print(X)
     for mol in suppl:
         X.append(list(calc.CalcDescriptors(mol)))
         y.append(float(mol.GetProp('pLC50')))
     # rows are samples, columns are features
     X = np.array(X)
-    print(X.shape)
     # standardize features
     X_std = Z_score_normalization(X)
     feature_matrix = pd.DataFrame(data=X_std, columns=calc.GetDescriptorNames())
@@ -46,93 +65,59 @@ def Z_score_normalization(feature_matrix):
     X_std = sc.fit_transform(feature_matrix)
     return X_std
 
-# Frequencies of diffrent atoms in training data
-{'C': 2766, 'N': 177, 'O': 446, 'Na': 1, 'Cl': 173, 'S': 28, 'Br': 23, 'P': 8, 'F': 33, 'I': 2}
-
-def plot_p50_frequencies(y):
-    """
-    plots a histogram of the pLC50 values
-    :param y: vector with pLC50 values
-    """
-    counts, bins = np.histogram(y, bins=20)
-    plt.hist(bins[:-1], bins, weights=counts)
-    plt.show()
+def drop_highly_correlated_features(X, cut_off):
+    '''
+    remove one of two features that have a pearson correlation coefficient above a cut_off
+    :param X: feature matrix
+    :param cut_off: threshold for correletion coeff
+    :return: feature matrix without highly correlated features
+    '''
+    cor_matrix = X.corr().abs()
+    upper_tri = cor_matrix.where(np.triu(np.ones(cor_matrix.shape), k=1).astype(bool))
+    to_drop = [i for i in range(len(upper_tri.columns)) if any(upper_tri.iloc[:, i] > cut_off)]
+    X_no_corr = X.drop(X.columns[to_drop], axis=1)
+    return X_no_corr
 
 def remove_null_features(feature_matrix, threshold):
     '''
     removes less diveres features (feature value counts less than threshold)
     '''
-    c = Counter(feature_matrix.iloc[:,0])
-    print(c)
     idx_drop = []
     for i in range(len(feature_matrix.columns)):
         if len(Counter(feature_matrix.iloc[:,i])) <= threshold:
-            print(feature_matrix.columns[i])
-            print(Counter(feature_matrix.iloc[:,i]))
             idx_drop.append(i)
-    print(f'the following columns are dropped {feature_matrix.columns[idx_drop]}')
-    print(f'total number of dropped columns: {len(idx_drop)}')
     feature_matrix = feature_matrix.drop(feature_matrix.columns[idx_drop], axis=1)
     return feature_matrix
 
 def conduct_pca(X):
     n_components = 75
     pca = PCA(n_components=n_components)
-    # do pca
     pca.fit(X)
-    print(pca.explained_variance_ratio_)
-    print(f'sum of explained variance: {sum(pca.explained_variance_ratio_)}')
     transformed_data = pca.transform(X)
+    print(f'{n_components} components contain {sum(pca.explained_variance_ratio_)*100:.4f} % of the variance')
     return transformed_data
 
-def count_nan(feature_matrix):
-    '''
-    function counts how often NaN appears in a column to estimate the number of samples that have to be dropped
-    '''
-    for i in range(len(feature_matrix.columns)):
-        if feature_matrix.iloc[:, i].isnull().any():
-            print(f'feature {feature_matrix.columns[i]} has {feature_matrix.iloc[:, i].isnull().sum()} NaN values')
-
-# check for atoms
-def check_for_atom(atom_symbol, mol):
-    '''
-    Returns 1 if a atom is present
-    '''
-    for atom in mol.GetAtoms():
-        if atom.GetSymbol() == atom_symbol:
-            return 1
-    return 0
-
-# check for aromaticity
-def check_for_arom(mol):
-    for atom in mol.GetAtoms():
-        if atom.GetIsAromatic():
-            return 1
-    return 0
 
 def main():
     # read in mols
-    suppl = Chem.SDMolSupplier('../qspr-dataset-02.sdf/qspr-dataset-02.sdf')
+    suppl = Chem.SDMolSupplier('../dat/qspr-dataset-02.sdf')
     # get standardized feature matrix and labels
     feature_matrix, y = get_feature_matrix(suppl)
-    feature_matrix = remove_null_features(feature_matrix, 1)
     # remove all columns which have NaN values
-    '''only one sample gets dropped which schows NaN only in ca. 13 columns. Maybe consider to remove the features to
-    save the one sample (look at what the features are)
-    '''
     feature_matrix['y'] = y
     feature_matrix = feature_matrix.dropna().reset_index(drop=True)
-    feature_matrix.to_csv('../pre-processed-data/data.csv')
-    # get more filtered features (drop everything with less than three different values)
-    feature_matrix_strict = remove_null_features(feature_matrix, 3)
-    feature_matrix_strict.to_csv('../pre-processed-data/data_strict.csv')
+    feature_matrix = remove_null_features(feature_matrix, 3)
+    feature_matrix.to_csv('../dat/trainings_data.csv', index=False)
+    print('check for metal organics:')
+    print(get_anorganics(suppl))
+    print(f'final number of desciptors: {feature_matrix.shape[1]}')
+
+    # pca
     pca_transformed_data = conduct_pca(feature_matrix.iloc[:,:-1])
     pca_transformed_data = pd.DataFrame(pca_transformed_data)
     pca_transformed_data['y'] = feature_matrix['y']
-    pca_transformed_data.to_csv('../pre-processed-data/data_pca.csv')
-    print(pca_transformed_data.shape)
-    print(feature_matrix.shape)
-    print(pca_transformed_data['y'].any() == feature_matrix['y'].any())
-    print(feature_matrix.head())
+    pca_transformed_data.to_csv('../dat/trainings_data_pca.csv', index=False)
 
-main()
+
+if __name__ == '__main__':
+    main()
