@@ -40,7 +40,6 @@ def get_feature_matrix(suppl):
     '''
     # generate descriptor caculator from Descriptors._descList
     calc = MoleculeDescriptors.MolecularDescriptorCalculator([x[0] for x in Descriptors._descList])
-    print('initial number of desciptors: ', len(Descriptors._descList))
     # feature matrix
     X = []
     # labels
@@ -117,7 +116,6 @@ def main():
     pca_transformed_data = pd.DataFrame(pca_transformed_data)
     pca_transformed_data['y'] = feature_matrix['y']
     pca_transformed_data.to_csv('../dat/trainings_data_pca.csv', index=False)
-
 
 if __name__ == '__main__':
     main()

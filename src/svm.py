@@ -26,6 +26,7 @@ def svr(X_train, X_test, y_train, y_test, C, coef0, degree, gamma, kernel):
 
     svr = SVR(C=C, coef0=coef0, degree=degree, gamma=gamma, kernel=kernel)
     svr_fit = svr.fit(X_train, y_train)
+    print(svr_fit.coef_)
 
 
     #print(y_test[:5])
@@ -114,7 +115,6 @@ def main():
     X_train_corr, X_test_corr, y_train_corr, y_test_corr = train_test_split(X_final, y, test_size=0.33, random_state=69)
 
     # train model
-    print("\n\nhighly correlated features removed:")
     svr(X_train_corr, X_test_corr, y_train_corr, y_test_corr, C=1, coef0=10, degree=3, gamma='scale', kernel='poly')
 
 
@@ -130,7 +130,6 @@ def main():
     X_train_sel, X_test_sel, y_train_sel, y_test_sel = train_test_split(X_feature_selected, y, test_size=0.33, random_state=69)
 
     # train model
-    print("\n\nhighly correlated features removed, features selected :")
     svr(X_train_sel, X_test_sel, y_train_sel, y_test_sel, C=1, coef0=10, degree=3, gamma='scale', kernel='poly')
 
 
@@ -152,7 +151,6 @@ def main():
 
     X_train_pca, X_test_pca, y_train_pca, y_test_pca = train_test_split(X_feature_pca, y, test_size=0.33, random_state=69)
 
-    print("\n\nPCA, features selected :")
     svr(X_train_pca, X_test_pca, y_train_pca, y_test_pca, C=1, coef0=10, degree=3, gamma='scale', kernel='poly')
 
 main()

@@ -47,7 +47,7 @@ def get_best_alpha(X, y):
 
 def main():
     # load trainings data
-    data = pd.read_csv('../pre-processed-data/data_strict.csv', index_col=0)
+    data = pd.read_csv('../dat/trainings_data.csv', index_col=0)
     X = data.iloc[:,:-1]
     y = data.iloc[:,-1].values
 
