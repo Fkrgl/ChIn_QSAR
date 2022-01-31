@@ -44,7 +44,7 @@ def cross_val(svr, X_train, y_train):
 def test_error(pred_test, y_test):
     # test error
     test_error = mean_squared_error(y_test, pred_test, squared=False)
-    print(f'test error: {test_error}')
+    print(f'test error: {test_error:.2f}')
 
 # ==================================================================================================================
 
@@ -117,7 +117,16 @@ def main():
     feature_matrix, y = f_g.get_feature_matrix(suppl)
     feature_matrix = feature_matrix[feature_list_cross_val]
     # remove all columns which have NaN values
-    feature_matrix = feature_matrix.dropna().reset_index(drop=True)
+    NA_values = feature_matrix[feature_matrix.isna().any(axis=1)]
+    if len(NA_values) > 0:
+        print('\nThe following compounds result in NaN values for our model features and are excluded from the '
+              'prediction: \n')
+        print(NA_values, '\n')
+        feature_matrix['y'] = y
+        # remove compounds
+        feature_matrix = feature_matrix.dropna().reset_index(drop=True)
+        y = feature_matrix['y']
+        feature_matrix = feature_matrix.drop(['y'], axis=1)
 
     dataset_prediction = model.predict(feature_matrix)
     test_error(dataset_prediction, y)

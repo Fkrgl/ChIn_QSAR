@@ -9,3 +9,8 @@
 # program call:
 
     python src/qsar.py -in_train dat/trainings_data.csv -in_test PATH_TO_TEST_DATA -out_path PATH_TO_OUTPUT_FILE
+
+
+# missing features:
+if the test file contains compounds for which our pre selected features result in NaN, then this compound is printed
+to the console and excluded from the prediction
