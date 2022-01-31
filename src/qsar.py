@@ -63,25 +63,29 @@ def write_prediction(comp_names, pred, file_name):
 def main():
     # some stuff for the argument parser
     parser = argparse.ArgumentParser()
-    parser.add_argument('--input_data',
-                        metavar='--input_data',
+    parser.add_argument('-in_train',
+                        metavar='train.sdf',
                         type=str,
-                        help=' Absolute Path to dataset, for which the prediction should be made')
-
-    parser.add_argument('--output_path',
-                        metavar='--output_path',
+                        help=' Path to dataset, on which the model should be trained')
+    parser.add_argument('-in_test',
+                        metavar='test.sdf',
                         type=str,
-                        help='Path, where the output .csv should be stored')
+                        help=' Path to dataset, for which the prediction should be made')
+    parser.add_argument('-out_path',
+                        metavar='predictions.csv',
+                        type=str,
+                        help='file path where the prediction of the test data should be stored')
 
     args = parser.parse_args()
-    input_data = args.input_data
-    output = args.output_path
+    input_training_data = args.in_train
+    input_test_data = args.in_test
+    output = args.out_path
 
     ''' ====================== train Model using training dataset ====================== '''
 
     # read the training dataset.(High-correlated features removed)
     # data = pd.read_csv('/home/mp/Documents/Cheminformatics/Assignments/Project/ChIn_QSAR/dat/trainings_data.csv')
-    data = pd.read_csv('../dat/trainings_data.csv')
+    data = pd.read_csv(input_training_data)
     if 'index' in data.columns:
         data = data.drop(['index'],axis=1)
 
@@ -104,25 +108,17 @@ def main():
     # train SVR model
     model = train_model(X_train_sel, X_test_sel, y_train_sel, y_test_sel, C=1, coef0=10, degree=3, gamma='scale', kernel='poly')
 
-    '''test_pred = model.predict(X_test_sel)
-    test = pd.DataFrame(X_test_sel)
-    test["y"] = y_test_sel
-    test["y_pred"] = test_pred
-    test.to_csv("test_pred.csv")'''
-
 
     ''' ====================== predict new dataset ====================== '''
 
     # read in mols
-    suppl = Chem.SDMolSupplier(input_data)
+    suppl = Chem.SDMolSupplier(input_test_data)
     # get standardized feature matrix and labels
     feature_matrix, y = f_g.get_feature_matrix(suppl)
     feature_matrix = feature_matrix[feature_list_cross_val]
     # remove all columns which have NaN values
     feature_matrix = feature_matrix.dropna().reset_index(drop=True)
 
-
-    print("\ntest error")
     dataset_prediction = model.predict(feature_matrix)
     test_error(dataset_prediction, y)
 
