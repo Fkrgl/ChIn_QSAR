@@ -11,7 +11,7 @@ import argparse
 
 import feature_generation as f_g
 
-def train_model(X_train, X_test, y_train, y_test, C, coef0, degree, gamma, kernel):
+def train_model(X_train, y_train, C, coef0, degree, gamma, kernel):
     """
     Trains a SVR model using the hyperparameters generated using grid search (grid_search_svr.py) and a training dataset.
     """
@@ -58,8 +58,6 @@ def write_prediction(comp_names, pred, file_name):
     df.to_csv(file_name, index=False)
 
 
-
-
 def main():
     # some stuff for the argument parser
     parser = argparse.ArgumentParser()
@@ -92,21 +90,19 @@ def main():
     # ============= SVR + Remove highly correlated features + only features generated using forward feature selection =============
 
     # split test dataset in X and y
-    X = data.loc[:,data.columns != 'y']
-    y = data.loc[:,data.columns == 'y'].values.flatten()
+    X_train = data.loc[:,data.columns != 'y']
+    y_train = data.loc[:,data.columns == 'y'].values.flatten()
 
 
 
     # apply much smaller set of features generated using Forward Feature Selection (feature_selection.py)
     feature_list_cross_val = ['NumAromaticCarbocycles', 'MolLogP', 'HallKierAlpha', 'VSA_EState10', 'BCUT2D_LOGPHI', 'PEOE_VSA14', 'FractionCSP3', 'PEOE_VSA6']
 
-    X_feature_selected = X[feature_list_cross_val]
-
-    X_train_sel, X_test_sel, y_train_sel, y_test_sel = train_test_split(X_feature_selected, y, test_size=0.33, random_state=42)
-
+    # select features
+    X_train = X_train[feature_list_cross_val]
 
     # train SVR model
-    model = train_model(X_train_sel, X_test_sel, y_train_sel, y_test_sel, C=1, coef0=10, degree=3, gamma='scale', kernel='poly')
+    model = train_model(X_train, y_train, C=1, coef0=10, degree=3, gamma='scale', kernel='poly')
 
 
     ''' ====================== predict new dataset ====================== '''
@@ -114,26 +110,26 @@ def main():
     # read in mols
     suppl = Chem.SDMolSupplier(input_test_data)
     # get standardized feature matrix and labels
-    feature_matrix, y = f_g.get_feature_matrix(suppl)
-    feature_matrix = feature_matrix[feature_list_cross_val]
+    X_test, y_test = f_g.get_feature_matrix(suppl)
+    X_test = X_test[feature_list_cross_val]
     # remove all columns which have NaN values
-    NA_values = feature_matrix[feature_matrix.isna().any(axis=1)]
+    NA_values = X_test[X_test.isna().any(axis=1)]
     if len(NA_values) > 0:
         print('\nThe following compounds result in NaN values for our model features and are excluded from the '
               'prediction: \n')
         print(NA_values, '\n')
-        feature_matrix['y'] = y
+        X_test['y'] = y_test
         # remove compounds
-        feature_matrix = feature_matrix.dropna().reset_index(drop=True)
-        y = feature_matrix['y']
-        feature_matrix = feature_matrix.drop(['y'], axis=1)
+        X_test = X_test.dropna().reset_index(drop=True)
+        y_test = X_test['y']
+        X_test = X_test.drop(['y'], axis=1)
 
-    dataset_prediction = model.predict(feature_matrix)
-    test_error(dataset_prediction, y)
+    dataset_prediction = model.predict(X_test)
+    test_error(dataset_prediction, y_test)
 
 
     # create output
-    row_ids = feature_matrix.index.values
+    row_ids = X_test.index.values
     write_prediction(row_ids, dataset_prediction, output)
 
 main()

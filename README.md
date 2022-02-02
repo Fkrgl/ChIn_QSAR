@@ -12,5 +12,5 @@
 
 
 # missing features:
-if the test file contains compounds for which our pre selected features result in NaN, then this compound is printed
+if the test file contains compounds for which our pre-selected features result in NaN, then this compound is printed
 to the console and excluded from the prediction
